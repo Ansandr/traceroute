@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include <stdint.h>  // For fixed-width integer types (u16, u32, etc.)
 #include <cstring>
 #include <unistd.h>
 
@@ -51,6 +52,27 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
+uint16_t checksum(void *b, int32_t len) {
+    uint16_t *buf = (uint16_t *)b;  // Cast the void pointer to uint16_t*
+    uint32_t sum = 0;
+
+    // Sum up the 16-bit words
+    while (len > 1) {
+        sum += *buf++;
+        len -= 2;
+    }
+
+    // Add the remaining byte if the length is odd
+    if (len == 1) {
+        sum += *(uint8_t *)buf;  // Cast to uint8_t* to handle the last byte
+    }
+
+    // Fold the 32-bit sum into a 16-bit checksum
+    sum = (sum >> 16) + (sum & 0xFFFF);
+    sum += (sum >> 16);  // Handle carry
+    return (uint16_t)(~sum);  // Return the one's complement
+}
+
 void traceroute(const char *ip, int max_hops, int respone_timeout) {
 
 	// Зберігаємо структуру місця призначення
@@ -75,7 +97,7 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 		icmp_header.un.echo.id = getpid();
 		icmp_header.un.echo.sequence = i;
 		// Розраховуємо контрольну суму
-		icmp_header.checksum = 0; // TODO checksum
+		icmp_header.checksum = checksum(&icmp_header, sizeof(struct icmphdr)); // TODO checksum
 
 		// Встановлюємо TTL для пакета
 		int ttl = i + 1;
@@ -116,7 +138,7 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 		cout << ttl << " " << inet_ntoa(from_addr.sin_addr) << endl;
 		
 		// Якщо з відповіді, ip-адрес цільового вузла. Завершити
-		if (strcmp(inet_ntoa(from_addr.sin_addr), ip)) {
+		if (strcmp(inet_ntoa(from_addr.sin_addr), ip) == 0) {
 			cout << endl << ttl << " hops between you and " << ip << endl;
 			break;
 		}
