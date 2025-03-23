@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 file(GLOB TRACER_SOURCE_FILES src/*.cpp src/*.hpp)
 
-add_executable(${PROJECT_NAME} ${TRACER_SOURCE_FILES})
+add_executable(${PROJECT_NAME} src/main.cpp src/main.h)
 
 if (MINGW)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
