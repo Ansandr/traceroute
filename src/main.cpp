@@ -1,13 +1,16 @@
 #include <iostream>
 
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
 
 #include "main.hpp"
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <netinet/ip_icmp.h>
 
 using namespace std;
+
+int sock; // icmp socket file descriptor
 
 char *hostname;
 
@@ -43,7 +46,81 @@ int main(int argc, char *argv[]) {
 			usage();
 	}
 	
+	traceroute(ip, max_hops, 1); // initial ttl is 1
+
 	return 0;
+}
+
+void traceroute(const char *ip, int max_hops, int respone_timeout) {
+
+	// Зберігаємо структуру місця призначення
+	struct sockaddr_in to_addr;
+
+	to_addr.sin_addr.s_addr = inet_addr(ip);	// Записуємо IP-адрес
+	to_addr.sin_family = AF_INET;				// use ipv4
+	to_addr.sin_port = rand();				// порт не потрібен для ICMP
+
+	// Створення RAW-socket
+	sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	if (sock < 0) {
+		perror("socket error");
+		return;
+	}
+
+	struct icmphdr icmp_header;
+	
+	for (int i = 0; i < max_hops; i++) {
+		// Заповнюємо ICMP заголовок
+		icmp_header.type = ICMP_ECHO;
+		icmp_header.un.echo.id = getpid();
+		icmp_header.un.echo.sequence = i;
+		// Розраховуємо контрольну суму
+		icmp_header.checksum = 0; // TODO checksum
+
+		// Встановлюємо TTL для пакета
+		int ttl = i + 1;
+		setsockopt(sock, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
+
+		// Відправка пакета
+		int send_flag = sendto(sock, &icmp_header, sizeof(icmp_header), 0,
+			(struct sockaddr *) &to_addr, socklen_t(sizeof(to_addr)));
+		if (send_flag < 0) {
+			perror("send error");
+			return;
+		}
+
+		// Отримуємо відповідь
+		struct iphdr ip_response_header; // структура для збереження
+	
+		// Виставляємо тайм-аут очікування
+		struct timeval tv;
+		tv.tv_sec = respone_timeout;
+		tv.tv_usec = 0;
+
+		setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+		setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+		// Очікуємо відповідь ICMP (recv)
+		int data_length_bytes = recv(sock, &ip_response_header, sizeof(ip_response_header), 0);
+
+		// Якщо таймаут
+		if (data_length_bytes == -1) {
+			cout << ttl << "* * *" << endl;
+			continue; // наступний hop
+		}
+
+		// Отримуємо ip-адрес відповіді
+		struct sockaddr_in from_addr;
+		from_addr.sin_addr.s_addr = ip_response_header.saddr;
+		
+		cout << ttl << " " << inet_ntoa(from_addr.sin_addr) << endl;
+		
+		// Якщо з відповіді, ip-адрес цільового вузла. Завершити
+		if (strcmp(inet_ntoa(from_addr.sin_addr), ip)) {
+			cout << endl << ttl << " hops between you and " << ip << endl;
+			break;
+		}
+	}
 }
 
 char* gethostinfo(char *hostname) {
