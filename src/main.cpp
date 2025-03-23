@@ -3,7 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "main.h"
+#include "main.hpp"
+#include <netdb.h>
+#include <arpa/inet.h>
 
 using namespace std;
 
@@ -13,7 +15,7 @@ int max_hops;
 
 int main(int argc, char *argv[]) {
 	int op;
-
+	char *ip;
 	int max_hops = 30;
 
 	// process option
@@ -34,7 +36,7 @@ int main(int argc, char *argv[]) {
 		case 1:
 			hostname = argv[optind];
 
-			// TODO dns lookup
+			ip = gethostinfo(hostname);
 
 			break;
 		default:
@@ -42,6 +44,29 @@ int main(int argc, char *argv[]) {
 	}
 	
 	return 0;
+}
+
+char* gethostinfo(char *hostname) {
+	struct hostent *he;
+
+    he = gethostbyname(hostname); // Запит в DNS для отримання ip
+
+    if (he == nullptr) {
+        herror("gethostbyname");
+
+        cout << "1. Check your Network Connection. " << endl
+        << "2. Check your DNS in /etc/resolv.conf - may be its unreachable" << endl;
+
+        exit(1);
+    }
+
+    cout << "Hostname: " << he->h_name << endl;
+    cout << "IP address: " << inet_ntoa(*(struct in_addr *) he->h_addr) << endl;
+
+	// Записати перший знайдений IP в рядок та повернути його
+    char ip[1024];
+    strcpy(ip, inet_ntoa(*(struct in_addr *) he->h_addr));
+    return ref(ip);
 }
 
 int str2val(const char *str, const char *what, int min, int max) {
