@@ -140,18 +140,27 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 
 		// Отримуємо ip-адрес відповіді
 		struct sockaddr_in from_addr;
+		struct in_addr sin_addr = from_addr.sin_addr;
 		from_addr.sin_addr.s_addr = ip_response_header.saddr;
 
-		fprintf(stdout, "%3d %5s %8s %8s     %s (%s)\n",
+		// Спроба дізнатись ім'я
+		string domain = "";
+		
+		hostent *hp = gethostbyaddr((void*) &sin_addr.s_addr, sizeof(sin_addr.s_addr), AF_INET);
+		if (hp != NULL) {
+			domain = "[" + string(hp->h_name) + "]";
+		}
+
+		fprintf(stdout, "%3d %5s %8s %8s     %s %s\n",
 			ttl,
 			"*",
 			"*",
 			"*",
 			inet_ntoa(from_addr.sin_addr),
-			"hostname");
+			domain.c_str());
 		
-		// Якщо з відповіді, ip-адрес цільового вузла. Завершити
-		if (strcmp(inet_ntoa(from_addr.sin_addr), ip) == 0) {
+		// Якщо отримали адрес цільового вузла. Завершити
+		if (strcmp(inet_ntoa(sin_addr), ip) == 0) {
 			fprintf(stdout, "\n%d hops between you and %s\n\n", ttl, ip);
 			break;
 		}
