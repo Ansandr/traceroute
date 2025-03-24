@@ -77,6 +77,7 @@ uint16_t checksum(void *b, int32_t len) {
 }
 
 void traceroute(const char *ip, int max_hops, int respone_timeout) {
+	fprintf(stdout, "over a maximum of %d hops:\n\n", max_hops);
 
 	// Зберігаємо структуру місця призначення
 	struct sockaddr_in to_addr;
@@ -89,7 +90,7 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 	sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (sock < 0) {
 		perror("socket error");
-		puts("Run with sudo!");
+		fprintf(stdout, "Run with sudo!");
 		return;
 	}
 
@@ -133,22 +134,29 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 
 		// Якщо таймаут
 		if (data_length_bytes == -1) {
-			cout << ttl << "* * *" << endl;
+			fprintf(stdout, "%3d     *        *        *     Request timed out.\n", ttl);
 			continue; // наступний hop
 		}
 
 		// Отримуємо ip-адрес відповіді
 		struct sockaddr_in from_addr;
 		from_addr.sin_addr.s_addr = ip_response_header.saddr;
-		
-		cout << ttl << " " << inet_ntoa(from_addr.sin_addr) << endl;
+
+		fprintf(stdout, "%3d %5s %8s %8s     %s (%s)\n",
+			ttl,
+			"*",
+			"*",
+			"*",
+			inet_ntoa(from_addr.sin_addr),
+			"hostname");
 		
 		// Якщо з відповіді, ip-адрес цільового вузла. Завершити
 		if (strcmp(inet_ntoa(from_addr.sin_addr), ip) == 0) {
-			cout << endl << ttl << " hops between you and " << ip << endl;
+			fprintf(stdout, "\n%d hops between you and %s\n\n", ttl, ip);
 			break;
 		}
 	}
+	fprintf(stdout, "Trace complete.\n\n");
 }
 
 char* gethostinfo(char *hostname) {
@@ -165,11 +173,11 @@ char* gethostinfo(char *hostname) {
         exit(1);
     }
 
-    cout << "Hostname: " << he->h_name << endl;
-    cout << "IP address: " << inet_ntoa(*(struct in_addr *) he->h_addr) << endl;
-
 	// Записати перший знайдений IP в рядок та повернути його
     char* ip = strdup(inet_ntoa(*(struct in_addr *)he->h_addr));;
+
+	fprintf(stdout, "Tracing route to %s (%s)\n", he->h_name, ip);
+	
     return ip;
 }
 
