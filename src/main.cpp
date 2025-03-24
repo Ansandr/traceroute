@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
 
 uint16_t checksum(void *b, int32_t len) {
     uint16_t *buf = (uint16_t *)b;  // Cast the void pointer to uint16_t*
+    uint16_t oddbyte;
     uint32_t sum = 0;
 
     // Sum up the 16-bit words
@@ -64,7 +65,9 @@ uint16_t checksum(void *b, int32_t len) {
 
     // Add the remaining byte if the length is odd
     if (len == 1) {
-        sum += *(uint8_t *)buf;  // Cast to uint8_t* to handle the last byte
+		oddbyte = 0;
+		*((u_char *) & oddbyte) = *(u_char *) buf;
+        sum += oddbyte;  // Cast to uint8_t* to handle the last byte
     }
 
     // Fold the 32-bit sum into a 16-bit checksum
@@ -95,6 +98,8 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 	for (int i = 0; i < max_hops; i++) {
 		// Заповнюємо ICMP заголовок
 		icmp_header.type = ICMP_ECHO;
+		icmp_header.code = 0;
+		icmp_header.checksum = 0;
 		icmp_header.un.echo.id = getpid();
 		icmp_header.un.echo.sequence = i;
 		// Розраховуємо контрольну суму
