@@ -3,6 +3,7 @@
 #include <stdint.h>  // For fixed-width integer types (u16, u32, etc.)
 #include <cstring>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "main.hpp"
 #include <netdb.h>
@@ -95,6 +96,7 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 	}
 
 	struct icmphdr icmp_header;
+	struct timeval start, end;
 	
 	for (int i = 0; i < max_hops; i++) {
 		// Заповнюємо ICMP заголовок
@@ -109,6 +111,9 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 		// Встановлюємо TTL для пакета
 		int ttl = i + 1;
 		setsockopt(sock, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
+
+		// start timer
+		gettimeofday(&start, NULL);
 
 		// Відправка пакета
 		int send_flag = sendto(sock, &icmp_header, sizeof(icmp_header), 0,
@@ -132,9 +137,16 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 		// Очікуємо відповідь ICMP (recv)
 		int data_length_bytes = recv(sock, &ip_response_header, sizeof(ip_response_header), 0);
 
+		// stop timer (після recv)
+		gettimeofday(&end, NULL);
+
+		// Розрахунок RTT
+		double rtt = (end.tv_sec - start.tv_sec) * 1000.0;
+		rtt += (end.tv_usec - start.tv_usec) / 1000.0;
+
 		// Якщо таймаут
 		if (data_length_bytes == -1) {
-			fprintf(stdout, "%3d     *        *        *     Request timed out.\n", ttl);
+			fprintf(stdout, "%3d     *        *        *       Request timed out.\n", ttl);
 			continue; // наступний hop
 		}
 
@@ -151,11 +163,11 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 			domain = "[" + string(hp->h_name) + "]";
 		}
 
-		fprintf(stdout, "%3d %5s %8s %8s     %s %s\n",
+		fprintf(stdout, "%3d %5.0f ms %5.0f ms %5.0f ms   %5s %s\n",
 			ttl,
-			"*",
-			"*",
-			"*",
+			rtt,
+			0.0f,
+			0.0f,
 			inet_ntoa(from_addr.sin_addr),
 			domain.c_str());
 		
