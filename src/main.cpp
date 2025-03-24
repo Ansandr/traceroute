@@ -86,6 +86,7 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 	sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (sock < 0) {
 		perror("socket error");
+		puts("Run with sudo!");
 		return;
 	}
 
@@ -163,9 +164,8 @@ char* gethostinfo(char *hostname) {
     cout << "IP address: " << inet_ntoa(*(struct in_addr *) he->h_addr) << endl;
 
 	// Записати перший знайдений IP в рядок та повернути його
-    char ip[1024];
-    strcpy(ip, inet_ntoa(*(struct in_addr *) he->h_addr));
-    return ref(ip);
+    char* ip = strdup(inet_ntoa(*(struct in_addr *)he->h_addr));;
+    return ip;
 }
 
 int str2val(const char *str, const char *what, int min, int max) {
