@@ -146,7 +146,7 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 
 		// Якщо таймаут
 		if (data_length_bytes == -1) {
-			fprintf(stdout, "%3d     *        *        *       Request timed out.\n", ttl);
+			fprintf(stdout, "%3d     *       Request timed out.\n", ttl);
 			continue; // наступний hop
 		}
 
@@ -163,11 +163,9 @@ void traceroute(const char *ip, int max_hops, int respone_timeout) {
 			domain = "[" + string(hp->h_name) + "]";
 		}
 
-		fprintf(stdout, "%3d %5.0f ms %5.0f ms %5.0f ms   %5s %s\n",
+		fprintf(stdout, "%3d %5.0f ms   %5s %s\n",
 			ttl,
 			rtt,
-			0.0f,
-			0.0f,
 			inet_ntoa(from_addr.sin_addr),
 			domain.c_str());
 		
